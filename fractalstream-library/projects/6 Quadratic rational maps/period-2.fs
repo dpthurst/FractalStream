@@ -64,7 +64,6 @@ script: |
   @config "Parameters"
   c : C as "c" := 0.3 + 0.6i
   b : C as "b = 1/a (Milnor's plane)" := 0.45 + 0.25i
-  esc : R as "Escape radius (1/a plane)" := 10000
 
   @config "Coloring"
   period : R as "Color period (iterations)" := 10
@@ -75,11 +74,13 @@ script: |
   f(z) := (z^2 + c)/(1 - z^2)
 
   # Milnor writes this family as a/z + 1/z^2; in b = 1/a it is 1/(b z) +
-  # 1/z^2, whose free critical point is -2b.  The family is invariant under
-  # a -> w a for w a cube root of unity, so the b-plane has a three-fold
-  # symmetry about the origin, a point of view on the same curve that the
-  # c-plane quotients away (see results/quadratic-rational-per-n.md).
-  g(z) := 1/(b z) + 1/z^2
+  # 1/z^2.  Its critical cycle is 0 <-> oo -- 0 is the double pole, and so
+  # the critical point on the cycle -- and its free critical point is -2b.
+  # The family is invariant under a -> w a for w a cube root of unity, so the
+  # b-plane has a three-fold symmetry about the origin, a point of view on the
+  # same curve that the c-plane quotients away (see results/quadratic-
+  # rational-per-n.md).
+  g(w) := 1/(b w) + 1/w^2
 
   # Black is everything whose free critical point does not reach the pole:
   # in the parameter plane that is the Mandelbrot-like set, in the dynamical
@@ -99,18 +100,29 @@ script: |
     else:
       color <- black
 
-  # The same curve in Milnor's coordinate, inverted.  The escape radius is
-  # 1e4 rather than 10 because b = 0 is the degenerate limit a = oo: at a
-  # radius of 10 every parameter within 1/(2 sqrt 10) of it escapes at the
-  # first step in one flat colour, a disc in the middle of the picture.
+  # The same curve in Milnor's coordinate, inverted, with the orbit followed
+  # as a point of the Riemann sphere.  This plane wants that: g has its pole
+  # at 0, and 0 <-> oo is the critical cycle, while b = 0 is the degenerate
+  # limit a = oo of the parametrization.  Affinely the arithmetic fails just
+  # where the picture is interesting -- a point that reaches the pole gives
+  # 1/0 -- and every parameter within 1/(2 sqrt R) of b = 0 escapes at the
+  # first iteration, one flat colour, a disc at the centre whose size is
+  # whatever escape radius R you pick.  On the sphere a point that reaches the
+  # pole goes to oo itself, and capture is being within 1e-12 of oo, the image
+  # of the pole, in the chart around it: |affine(0, u)| < 10^-12, i.e.
+  # |u| > 1e12, with no escape radius to choose.  At b = 0 exactly the normal
+  # form is 0/0 -- a = oo is not a member of the family -- so that one pixel
+  # is black.
+  captured2(u) := |affine(0, u)| < 10⁻¹²
+
   define shadeM:
-    if z escaped:
+    if captured2(u):
       color <- rainbow(iterations / period)
     else if periods:
-      w := z
+      w : Ĉ := u
       repeat up to 64 times:
         w <- g(w)
-      until w = z
+      until w = u
       color <- if stuck then black else blend(0.5, rainbow(iterations / 8), white)
     else:
       color <- black
@@ -124,9 +136,9 @@ script: |
   iterate z -> f(z) until z escapes
   run shadeP
 
-  @viewer "Plane in Milnor's 1/a (Z/3)" var=b center=0 pixelSize=1/300 limit=iters escape=esc
-  z := -2 b
-  iterate z -> g(z) until z escapes
+  @viewer "Plane in Milnor's 1/a (Z/3)" var=b center=0 pixelSize=1/300 limit=iters
+  u : Ĉ := -2 b
+  iterate u -> g(u) until captured2(u)
   run shadeM
 
   @tool overlay for="Parameter plane"
@@ -157,7 +169,9 @@ metadata:
     Julia set of the current parameter, and one the same curve in Milnor's
     coordinate z -> a/z + 1/z^2, drawn in the inverted plane b = 1/a, where
     the family's invariance under a -> w a (w a cube root of unity) shows as
-    a three-fold symmetry.
+    a three-fold symmetry.  That window follows the orbit on the Riemann
+    sphere, so the poles (0 and oo, the critical cycle itself) are handled
+    exactly.
   preview-commands: |
     capture viewer "Parameter plane" as preview
   preview: |
